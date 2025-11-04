@@ -6,8 +6,9 @@ from langchain_core.output_parsers import PydanticOutputParser
 from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 from pydantic import BaseModel, Field
+import json
+from azure.storage.blob import BlobClient, ContainerClient
 # %% structured output
-
 class MyMovieOutput(BaseModel):
     title: str
     main_characters: list[str]
@@ -51,3 +52,24 @@ for movie in res.movies:
     print("-"*20)
 
 # %%
+CONNECTION_STRING = os.getenv("STORAGE_CONNECTION")
+CONTAINER_NAME = "movies"
+
+#%%
+for movie in res.movies:
+    json_dump = json.dumps(movie.model_dump())
+    BLOB_NAME = f"{movie.title}.json"
+    blob_client = BlobClient.from_connection_string(
+        conn_str=CONNECTION_STRING,
+        container_name=CONTAINER_NAME,
+        blob_name=BLOB_NAME
+    )
+    blob_client.upload_blob(json_dump, overwrite=True, encoding="utf-8")    
+    print(f"Blob {BLOB_NAME} erfolgreich erstellt")
+# %% list files in container
+container_client = ContainerClient.from_connection_string(
+    conn_str=CONNECTION_STRING,
+    container_name=CONTAINER_NAME
+)
+for blob in container_client.list_blobs():
+    print(blob.name)
