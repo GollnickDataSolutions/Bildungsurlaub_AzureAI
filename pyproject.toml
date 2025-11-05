@@ -31,4 +31,5 @@ dependencies = [
     "pygame>=2.6.1",
     "pymupdf>=1.26.5",
     "python-dotenv>=1.1.1",
+    "streamlit>=1.51.0",
 ]
