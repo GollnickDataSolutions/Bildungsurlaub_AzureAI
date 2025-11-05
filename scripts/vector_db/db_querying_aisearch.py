@@ -18,8 +18,10 @@ search_client = SearchClient(
 endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
 
 #%% ai search invocation
-def rag(user_query:str) -> str:
-    results = search_client.search(search_text=user_query, top=3)
+def rag(user_query:str, k=3) -> str:
+    # 1. Retrieval
+    #-------------
+    results = search_client.search(search_text=user_query, top=k)
 
     # show results
     res_list = []
@@ -27,11 +29,10 @@ def rag(user_query:str) -> str:
         print(res)
         res_list.append(res)
 
-    #
+    # 2. Augmentation
     chunk_source_list = [f"Chunk: {res["chunk"]}, File: {res["title"]}"  for res in res_list]
     # convert list[str] in str
     context_info = ";".join(chunk_source_list)
-
 
     prompt_template = ChatPromptTemplate.from_messages([
         ("system", """
@@ -42,6 +43,8 @@ def rag(user_query:str) -> str:
         ("user", "Nutzeranfrage: {user_prompt}, Kontextinformationen: {context_info}")
     ])
 
+    # 3. Generation
+    #--------------
     model = AzureChatOpenAI(
         model="gpt-4o-mini",
         api_key=os.getenv("AZURE_OPENAI_API_KEY"), 
