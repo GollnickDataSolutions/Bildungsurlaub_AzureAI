@@ -1,5 +1,8 @@
 #%% packages
 import os
+from langchain_openai import AzureChatOpenAI
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from dotenv import load_dotenv, find_dotenv
@@ -12,19 +15,43 @@ search_client = SearchClient(
     index_name=os.getenv("AI_SEARCH_INDEX"),
     credential=credential
 )
+endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
 
 #%% ai search invocation
-search_term = "Juliet"
-results = search_client.search(search_text=search_term, top=3)
+def rag(user_query:str) -> str:
+    results = search_client.search(search_text=user_query, top=3)
+
+    # show results
+    res_list = []
+    for res in results:
+        print(res)
+        res_list.append(res)
+
+    #
+    chunk_source_list = [f"Chunk: {res["chunk"]}, File: {res["title"]}"  for res in res_list]
+    # convert list[str] in str
+    context_info = ";".join(chunk_source_list)
 
 
-#%% show results
-i = 0 
-for res in results:
-    print(res)
-    i += 1
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", """
+            Du bist Literaturexperte und kannst Fragen zu Romanen beantworten.
+            Dir werden Kontextinformationen übergeben und du beantwortest du Nutzeranfrage ausschließlich auf Basis dieser Informationen.
+            Wenn du die Frage nicht auf Basis des Kontextes beantworten kannst, sag 'Weiß ich doch auch'.
+        """),
+        ("user", "Nutzeranfrage: {user_prompt}, Kontextinformationen: {context_info}")
+    ])
 
-#%%
-i
+    model = AzureChatOpenAI(
+        model="gpt-4o-mini",
+        api_key=os.getenv("AZURE_OPENAI_API_KEY"), 
+        api_version="2025-01-01-preview")
 
+    # chain
+    chain = prompt_template | model | StrOutputParser()
+
+    # result
+    res = chain.invoke({"user_prompt": user_query, "context_info": context_info})
+    return res
 # %%
+rag(user_query="wer ist frankenstein?")
