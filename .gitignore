@@ -84,7 +84,9 @@ ipython_config.py
 *.sqlite3
 *.pickle
 *.bin
-
+azuretemplate/
+azure_func_muffin_chihuahua/
+.vscode/
 *.wav
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
